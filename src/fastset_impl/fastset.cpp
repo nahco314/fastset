@@ -10,105 +10,102 @@
 #include <iostream>
 
 
-static HPyContext* _g_ctx;
+#define dup(x) HPy_Dup(_g_ctx, x)
+#define close(x) HPy_Close(_g_ctx, x)
+#define None dup(_g_ctx->h_None)
+#define as_py(x) HPyLong_FromLong(_g_ctx, (long)x)
+#define as_c(x) HPyLong_AsLong(_g_ctx, x)
 
+using ll = long long;
+
+static HPyContext* _g_ctx;
 
 #ifdef __GNUC__
     #include <ext/pb_ds/assoc_container.hpp>
     #include <ext/pb_ds/tree_policy.hpp>
     using namespace std;
     using namespace __gnu_pbds;
-    const static auto comp_pyobj = [](HPy lhs, HPy rhs){
-        return (bool)HPy_RichCompareBool(_g_ctx, lhs, rhs, HPy_LT);  // 比較できない場合 -1
-    };
+    const static auto comp = less<ll>();
     using pb_set = tree<
-        HPy,
+        ll,
         null_type,
-        decltype(comp_pyobj),
+        decltype(comp),
         rb_tree_tag,
         tree_order_statistics_node_update
     >;
 #else
     #include <set>
-    using namespace std;
-    const static auto comp_pyobj = [](HPy lhs, HPy rhs){
-        return (bool)HPy_RichCompareBool(_g_ctx, lhs, rhs, HPy_LT);
-    };
-    using pb_set = set<HPy, decltype(comp_pyobj)>;
+    using namespace std;asfasfasf
+    using pb_set = set<ll>;
 #endif
 
-#define dup(x) HPy_Dup(_g_ctx, x)
-#define close(x) HPy_Close(_g_ctx, x)
-#define None dup(_g_ctx->h_None)
 
-struct Set4PyObject {
+struct Set4PyLong {
     pb_set st;
     pb_set::iterator it;
-    Set4PyObject() : st(comp_pyobj), it(st.begin()) {}
-
-    ~Set4PyObject(){
-        for(HPy p : st) close(p);
-    }
+    Set4PyLong() : st(comp), it(st.begin()) {}
+    Set4PyLong(vector<int> vec) : st(vec.begin(), vec.end(), comp), it(st.begin()) {}
+    Set4PyLong(const Set4PyLong& other) : st(other.st), it(st.begin()) {}
 
     bool add(HPy x) {
-        HPy y = dup(x);
+        ll x_c = as_c(x);
 
-        const auto& r = st.insert(y);
+        const auto& r = st.insert(x_c);
 
         it = r.first;
-        if(r.second){
+        if (r.second) {
             return true;
-        }else{
-            close(y);
+        } else {
             return false;
         }
     }
 
     HPy remove(HPy x) {
-        it = st.find(x);
-        if(it == st.end()) return HPyErr_SetObject(_g_ctx, _g_ctx->h_KeyError, x);
-        close(*it);
+        ll x_c = as_c(x);
+
+        it = st.find(x_c);
+        if (it == st.end()) return HPyErr_SetObject(_g_ctx, _g_ctx->h_KeyError, x);
         it = st.erase(it);
-        if(it == st.end()) return None;
-        return dup(*it);
+        if (it == st.end()) return None;
+        return as_py(*it);
     }
 
     HPy search_higher_equal(HPy x) {
-        it = st.lower_bound(x);
-        if(it == st.end()) return None;
-        return dup(*it);
+        ll x_c = as_c(x);
+
+        it = st.lower_bound(x_c);
+        if (it == st.end()) return None;
+        return as_py(*it);
     }
 
     HPy min() {
-        if(st.size()==0)
+        if (st.size() == 0)
             return HPyErr_SetString(_g_ctx, _g_ctx->h_IndexError, "min from an empty set");
         it = st.begin();
-        return dup(*it);
+        return as_py(*it);
     }
 
     HPy max() {
-        if(st.size()==0)
+        if (st.size() == 0)
             return HPyErr_SetString(_g_ctx, _g_ctx->h_IndexError, "max from an empty set");
         it = prev(st.end());
-        return dup(*it);
+        return as_py(*it);
     }
 
     HPy pop_min() {
-        if (st.size()==0)
+        if (st.size() == 0)
             return HPyErr_SetString(_g_ctx, _g_ctx->h_IndexError, "pop_min from an empty set");
         it = st.begin();
-        HPy res = dup(*it);
-        close(*it);
+        HPy res = as_py(*it);
         it = st.erase(it);
         return res;
     }
 
     HPy pop_max() {
-        if (st.size()==0)
+        if (st.size() == 0)
             return HPyErr_SetString(_g_ctx, _g_ctx->h_IndexError, "pop_max from an empty set");
         it = prev(st.end());
-        HPy res = dup(*it);
-        close(*it);
+        HPy res = as_py(*it);
         it = st.erase(it);
         return res;
     }
@@ -120,34 +117,33 @@ struct Set4PyObject {
     HPy iter_next() {
         if (it == st.end()) return None;
         if (++it == st.end()) return None;
-        return dup(*it);
+        return as_py(*it);
     }
 
     HPy iter_prev() {
         if (it == st.begin()) return None;
-        return dup(*--it);
+        return as_py(*--it);
     }
 
     HPy to_list() {
         HPyListBuilder builder = HPyListBuilder_New(_g_ctx, len());
         int i = 0;
-        for (HPy p : st) {
-            HPyListBuilder_Set(_g_ctx, builder, i++, dup(p));
+        for (ll p : st) {
+            HPyListBuilder_Set(_g_ctx, builder, i++, as_py(p));
         }
         return HPyListBuilder_Build(_g_ctx, builder);
     }
 
     HPy get() {
         if (it == st.end()) return None;
-        return dup(*it);
+        return as_py(*it);
     }
 
     HPy erase() {
         if (it == st.end()) return HPyErr_SetString(_g_ctx, _g_ctx->h_IndexError, "erase end");
-        close(*it);
         it = st.erase(it);
         if(it == st.end()) return None;
-        return dup(*it);
+        return as_py(*it);
     }
 
     HPy getitem(long idx) {
@@ -169,7 +165,7 @@ struct Set4PyObject {
             for (int i = 0; i < idx_pos; i++) it++;
         #endif
 
-        return dup(*it);
+        return as_py(*it);
     }
 
     HPy pop(long idx) {
@@ -191,26 +187,27 @@ struct Set4PyObject {
             for (int i = 0; i < idx_pos; i++) it++;
         #endif
 
-        HPy res = dup(*it);
-        close(*it);
+        HPy res = as_py(*it);
         it = st.erase(it);
         return res;
     }
 
     long index(HPy x) {
+        ll x_c = as_c(x);
+
         #ifdef __GNUC__
-            return st.order_of_key(x);
+            return st.order_of_key(x_c);
         #else
             long res = 0;
             pb_set::iterator it2 = st.begin();
-            while(it2 != st.end() && comp_pyobj(*it2, x)) it2++, res++;
+            while (it2 != st.end() && comp(*it2, x_c)) it2++, res++;
             return res;
         #endif
     }
 };
 
 typedef struct {
-    Set4PyObject* st;
+    Set4PyLong* st;
 } SetObject;
 
 HPyType_HELPERS(SetObject)
@@ -227,7 +224,7 @@ HPy Set_new_impl(HPyContext *ctx, HPy cls, HPy *args, HPy_ssize_t nargs, HPy Kw)
     HPy h_set = HPy_New(ctx, cls, &set);
 
     _g_ctx = ctx;
-    set->st = new Set4PyObject();
+    set->st = new Set4PyLong();
 
     if (HPy_IsNull(h_set))
         return HPy_NULL;
@@ -262,7 +259,7 @@ HPy Set_search_higher_equal_impl(HPyContext *ctx, HPy self, HPy elt)
     SetObject *set = SetObject_AsStruct(ctx, self);
 
     _g_ctx = ctx;
-    HPy res = dup(set->st->search_higher_equal(elt));
+    HPy res = set->st->search_higher_equal(elt);
 
     return res;
 }
@@ -387,11 +384,7 @@ HPy Set_copy_impl(HPyContext *ctx, HPy self)
     HPy h_set = HPy_New(ctx, HPy_Type(ctx, self), &set2);
 
     _g_ctx = ctx;
-    set2->st = new Set4PyObject();
-
-    for (HPy p : set->st->st) {
-        set2->st->add(p);
-    }
+    set2->st = new Set4PyLong(*set->st);
 
     if (HPy_IsNull(h_set))
         return HPy_NULL;
