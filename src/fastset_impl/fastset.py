@@ -10,7 +10,7 @@ def __bootstrap__():
     else:
         ext_filepath = os.path.join(os.path.dirname(os.path.dirname(f)), "fastset.hpy.so")
 
-    m = load('fastset', ext_filepath, debug=True)
+    m = load('fastset', ext_filepath, debug=False)
     m.__file__ = ext_filepath
     m.__loader__ = __loader__
     m.__name__ = __name__

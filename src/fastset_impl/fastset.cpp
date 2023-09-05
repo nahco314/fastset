@@ -35,7 +35,7 @@ static HPyContext* _g_ctx;
     >;
 #else
     #include <set>
-    using namespace std;asfasfasf
+    using namespace std;
     using pb_set = set<ll>;
 #endif
 
