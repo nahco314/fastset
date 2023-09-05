@@ -79,16 +79,3 @@ if sys.argv[-1] == "ONLINE_JUDGE" or not is_judge:
 
 from fastset import Set
 
-
-l, q = map(int, input().split())
-cs = Set()
-cs.add(0)
-cs.add(l)
-
-for i in range(q):
-    c, x = map(int, input().split())
-    if c == 1:
-        cs.add(x)
-    else:
-        ind = cs.index(x)
-        print(cs[ind] - cs[ind - 1])
